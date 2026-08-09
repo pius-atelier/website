@@ -51,7 +51,7 @@ header {
 .header-container {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 15px 20px;
+  padding: 4px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -63,7 +63,7 @@ header {
 }
 
 .logo-img {
-  height: 42px;
+  height: 60px;
   width: auto;
   display: block;
 }
@@ -78,7 +78,7 @@ nav ul {
 nav a {
   font-weight: 500;
   color: var(--text-color);
-  font-size: 0.95rem;
+  font-size: 1.1rem;
 }
 
 nav a:hover, nav a.active {
@@ -146,7 +146,6 @@ nav ul li a {
 .hero p {
   font-size: 1.1rem;
   color: var(--text-light);
-  margin-bottom: 25px;
 }
 
 /* Main Layout */
@@ -168,10 +167,10 @@ nav ul li a {
 .section-title::after {
   content: '';
   display: block;
-  width: 50px;
+  width: 100px;
   height: 3px;
   background-color: var(--accent-color);
-  margin: 10px auto 0;
+  margin: 5px auto 0;
   border-radius: 2px;
 }
 
@@ -317,7 +316,7 @@ footer {
   padding-top: 20px;
 }
 
-@media (max-width: 780px) {
+@media (max-width: 1080px) {
   .header-container {
     flex-wrap: wrap;
     justify-content: space-between;
