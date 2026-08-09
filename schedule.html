@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ピウスアトリエ 予約相談用フォーム</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        padding: 20px;
+        min-height: 100vh;
+      }
+      .container {
+        max-width: 800px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        padding: 40px;
+      }
+      h2 {
+        color: #2c3e50;
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 28px;
+      }
+      h3 {
+        color: #e74c3c;
+        margin-top: 25px;
+        margin-bottom: 15px;
+        font-size: 18px;
+        border-left: 4px solid #e74c3c;
+        padding-left: 12px;
+      }
+      .notice-section {
+        background: #fff3cd;
+        border-left: 4px solid #ffc107;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        line-height: 1.8;
+      }
+      .notice-section br:last-child {
+        display: none;
+      }
+      .form-section {
+        background: #f8f9fa;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        line-height: 1.8;
+      }
+      .schedule-table {
+        width: 100%;
+        margin-top: 20px;
+        border-collapse: collapse;
+      }
+      .schedule-table th {
+        background: #34495e;
+        color: white;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+      }
+      .schedule-table td {
+        padding: 12px;
+        border-bottom: 1px solid #ecf0f1;
+      }
+      .schedule-table tr:hover {
+        background: #f8f9fa;
+      }
+      .schedule-table tr.month-header:hover {
+        background: none;
+      }
+      .month-title-cell {
+        background: #eaf2f8;
+        color: #2c3e50;
+        font-weight: bold;
+        font-size: 16px;
+        padding: 10px 12px !important;
+        border-bottom: 2px solid #bdc3c7 !important;
+      }
+      .select-btn {
+        background: #27ae60;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: background 0.3s;
+      }
+      .select-btn:hover {
+        background: #277e60;
+      }
+      .select-btn:disabled {
+        background: #7f8c8d;
+        cursor: not-allowed;
+      }
+      .select-btn.disabled-booked {
+        background: #e06d61;
+      }
+      .month-nav-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        flex-wrap: wrap;
+      }
+      .month-nav-btn {
+        background: #5a738e;
+        color: white;
+        border: none;
+        padding: 8px 20px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        transition: background 0.3s;
+      }
+      .month-nav-btn:hover {
+        background: #465a70;
+      }
+      @media (max-width: 600px) {
+        .container {
+          padding: 20px;
+        }
+        h2 {
+          font-size: 22px;
+        }
+        .schedule-table {
+          font-size: 14px;
+        }
+        .schedule-table td, .schedule-table th {
+          padding: 8px;
+        }
+      }
+    </style>
+    <script>
+      const API_KEY = 'AIzaSyCIIjhZmt3PCXe5ILuRFPrN6_iJbMxXWpg'; 
+      const CALENDAR_ID = 'c666aaabda48f04b4ff767e6af9be1da56a31f715931aa39973632bba5b6a408@group.calendar.google.com'; 
+      const cookieIds = ['num', 'child', 'woman', 'man', 'woman_wc', 'man_wc', 'no_child', 'no_woman', 'no_man'];
+      const onlyEventIds = ['try', 'talk'];
+      let selectedDateTime = [];
+      let fetchedEvents;
+      window.addEventListener('DOMContentLoaded', () => {
+        loadFormState();
+        setCookieEventListeners();
+        onlyEventListeners();
+        generateCopyText();
+        const now = new Date().toISOString();
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=2500`;
+        fetch(url)
+            .then(response => {
+                if (!response.ok) throw new Error('カレンダーデータの取得に失敗しました。設定を確認してください。');
+                return response.json();
+            })
+            .then(data => {
+                fetchedEvents = data.items || [];
+                update();
+            })
+            .catch(err => {
+                document.getElementById('schedule-table').innerText = err.message;
+            });
+      });
+
+      function update() {
+        const tableBody = document.getElementById("schedule-table");
+        tableBody.innerHTML = "";
+        const navContainer = document.getElementById("month-nav");
+        navContainer.innerHTML = "";
+        const isViewMode = new URLSearchParams(window.location.search).has('view');
+        const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+        const daysToCount = 60;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const myNum = parseInt(document.getElementById("num")?.value || "1", 10);
+        const myChild = document.getElementById("child")?.checked;
+        const myWoman = document.getElementById("woman")?.checked || document.getElementById("woman_wc")?.checked;
+        const myMan = document.getElementById("man")?.checked || document.getElementById("man_wc")?.checked;
+        const myNoChild = document.getElementById("no_child")?.checked;
+        const myNoWoman = document.getElementById("no_woman")?.checked;
+        const myNoMan = document.getElementById("no_man")?.checked;
+        let lastMonth = null;
+        const now = new Date();
+        let startOffset = 1;
+        if (now.getHours() >= 23) {
+          startOffset = 2;
+        }
+      
+        for (let i = startOffset; i < daysToCount + startOffset; i++) {
+            const currentDate = new Date();
+            currentDate.setDate(currentDate.getDate() + i);
+            const month = currentDate.getMonth() + 1;
+            const date = currentDate.getDate();
+            const dayOfWeek = currentDate.getDay();
+            const dayName = dayLabels[dayOfWeek];
+            if (dayOfWeek === 0) continue;
+
+            if (month !== lastMonth) {
+              const monthRow = document.createElement("tr");
+              monthRow.className = "month-header";
+              monthRow.id = `month-${month}`;
+              const monthCell = document.createElement("td");
+              monthCell.className = "month-title-cell";
+              monthCell.colSpan = isViewMode ? 3 : 2; 
+              monthCell.textContent = `${month}月`;
+              monthRow.appendChild(monthCell);
+              tableBody.appendChild(monthRow);
+              if (lastMonth !== null) {
+                const navBtn = document.createElement("button");
+                navBtn.className = "month-nav-btn";
+                navBtn.textContent = `${month}月`;
+                navBtn.addEventListener("click", () => {
+                  const targetRow = document.getElementById(`month-${month}`);
+                  if (targetRow) {
+                    targetRow.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }
+                });
+                navContainer.appendChild(navBtn);
+              }
+              lastMonth = month;
+            }
+          
+            let timeSlots = [];
+            const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+            if (isWeekday) {
+              timeSlots = ["10時", "13時", "16時半"];
+            } else if (dayOfWeek === 6) {
+              timeSlots = ["10時", "13時"];
+            }
+            timeSlots.forEach(time => {
+              const row = document.createElement("tr");
+              const dateCell = document.createElement("td");
+              const dateText = `${month}月${date}日(${dayName}) ${time}～`;
+              dateCell.textContent = dateText;
+              const statusCell = document.createElement("td");
+        
+              const slotDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+              if (time === "10時") {
+                slotDate.setHours(10, 0, 0, 0);
+              } else if (time === "13時") {
+                slotDate.setHours(13, 0, 0, 0);
+              } else if (time === "16時半") {
+                slotDate.setHours(16, 30, 0, 0);
+              }
+              const matchedEvents = fetchedEvents.filter(event => {
+                if (!event.start || !event.start.dateTime || !event.end || !event.end.dateTime) return false;
+                const eventStart = new Date(event.start.dateTime);
+                const eventEnd = new Date(event.end.dateTime);
+                return slotDate >= eventStart && slotDate < eventEnd;
+              });
+        
+              let isDisabled = matchedEvents.some(event => (event.summary || "").trim() === "不可");
+              if (dayOfWeek === 6 && myNoChild) isDisabled = true;
+              
+              let totalPeople = 0;
+              let existingChild = false;
+              let existingWoman = false;
+              let existingMan = false;
+              let existingNoChild = false;
+              let existingNoWoman = false;
+              let existingNoMan = false;
+        
+              matchedEvents.forEach(event => {
+                const summary = (event.summary || "").trim();
+                if (!summary || summary === "予定あり" || summary === "予約不可") return;
+        
+                if (summary.includes("C") || summary.includes("B")) existingChild = true;
+                if (summary.includes("W")) existingWoman = true;
+                if (summary.includes("M")) existingMan = true;
+                if (summary.includes("c")) existingNoChild = true;
+                if (summary.includes("w")) existingNoWoman = true;
+                if (summary.includes("m")) existingNoMan = true;
+        
+                const names = summary.split(/[，,]/);
+                let eventCount = names.length;
+                totalPeople += eventCount;
+              });
+        
+              if (!isDisabled && matchedEvents.length > 0) {
+                if (existingNoChild && myChild) isDisabled = true;
+                if (existingNoWoman && myWoman) isDisabled = true;
+                if (existingNoMan && myMan) isDisabled = true;
+                if (myNoChild && existingChild) isDisabled = true;
+                if (myNoWoman && existingWoman) isDisabled = true;
+                if (myNoMan && existingMan) isDisabled = true;
+                if ((totalPeople + myNum) > 5) isDisabled = true;
+              }
+              if (isWeekday && time === "16時半" && (myWoman || myMan)) isDisabled = true;
+        
+              const btn = document.createElement("button");
+              btn.className = "select-btn";
+              if (isDisabled) {
+                btn.textContent = "不可";
+                btn.classList.add("disabled-booked");
+                btn.disabled = true;
+              } else {
+                if (selectedDateTime.includes(dateText)) {
+                  btn.textContent = "選択中";
+                  btn.disabled = true;
+                } else if (isViewMode) {
+                  let totalPeople = 0;
+                  matchedEvents.forEach(event => {
+                    const summary = (event.summary || "").trim();
+                    if (summary && summary !== "予定あり") {
+                      const names = summary.split(/[，,]/);
+                      totalPeople += names.length;
+                    }
+                  });
+                  btn.textContent = `${totalPeople}人`;
+                } else {
+                  btn.textContent = "ご相談可能";
+                }
+                btn.addEventListener("click", () => {
+                    if (!selectedDateTime.includes(dateText)) {
+                      selectedDateTime.push(dateText);
+                    }
+                    update();
+                    generateCopyText();
+                    document.getElementById("copy-base").scrollIntoView({ behavior: 'smooth' });
+                });
+              }
+              statusCell.appendChild(btn);
+              row.appendChild(dateCell);
+              row.appendChild(statusCell);
+        
+              if (isViewMode) {
+                const infoCell = document.createElement("td");
+                if (matchedEvents.length > 0) {
+                  infoCell.textContent = matchedEvents.map(e => e.summary || "予定あり").join(",");
+                } else {
+                  infoCell.textContent = "なし";
+                }
+                row.appendChild(infoCell);
+              }
+        
+              tableBody.appendChild(row);
+            });
+          }
+      }
+      function generateCopyText() {
+          const numEl = document.getElementById("num");
+          const numVal = numEl ? parseInt(numEl.value, 10) : 1;
+          const numText = numEl ? numEl.value + "名" : "〇名";
+          const nameArray = [];
+          for (let i = 0; i < numVal; i++) {
+              nameArray.push(String.fromCharCode(65 + i) + "さん");
+          }
+          let calendarText = nameArray.join(",");
+          const calendarProfiles = [];
+          if (document.getElementById("child")?.checked) calendarProfiles.push("C");
+          if (document.getElementById("woman_wc")?.checked) {
+              calendarProfiles.push("W");
+              calendarProfiles.push("B");
+          } else if (document.getElementById("woman")?.checked) {
+              calendarProfiles.push("W");
+          }
+          if (document.getElementById("man_wc")?.checked) {
+              calendarProfiles.push("M");
+              calendarProfiles.push("B");
+          } else if (document.getElementById("man")?.checked) {
+              calendarProfiles.push("M");
+          }
+          const nc = document.getElementById("no_child")?.checked;
+          const nw = document.getElementById("no_woman")?.checked;
+          const nm = document.getElementById("no_man")?.checked;
+          if (nc) calendarProfiles.push("c");
+          if (nw) calendarProfiles.push("w");
+          if (nm) calendarProfiles.push("m");
+          if (calendarProfiles.length > 0) {
+              calendarText += calendarProfiles.join("");
+          }
+        
+          const profiles = [];
+          if (document.getElementById("child")?.checked) profiles.push("子供");
+          if (document.getElementById("woman")?.checked) profiles.push("大人女性");
+          if (document.getElementById("woman_wc")?.checked) profiles.push("大人女性(子連れ)");
+          if (document.getElementById("man")?.checked) profiles.push("大人男性");
+          if (document.getElementById("man_wc")?.checked) profiles.push("大人男性(子連れ)");
+          const profileText = profiles.length > 0 ? profiles.join("・") : "〇〇";
+          
+          const options = [];
+          if (nc && nw && nm) {
+              options.push("個別レッスン");
+          } else {
+              if (nc) options.push("他の子供不可");
+              if (nw) options.push("他の大人女性不可");
+              if (nm) options.push("他の大人男性不可");
+          }
+        
+          const firsts = [];
+          if (document.getElementById("try")?.checked) firsts.push("体験レッスン");
+          if (document.getElementById("talk")?.checked) firsts.push("教室見学や相談");
+        
+          const optionText = options.length > 0 ? `、${options.join("・")}で` : "";
+          const firstText = firsts.length > 0 ? `、${firsts.join("・")}の` : "";
+          const dateTimeHTML = selectedDateTime.length > 0 ? selectedDateTime.join("<br>") : "★★日程が未選択です★★";
+          const resultHTML = `${dateTimeHTML}<br>${profileText}が${numText}で${optionText}${firstText}予約希望です。<br>[${calendarText}]`;
+          document.getElementById("copy-target-box").innerHTML = resultHTML;
+      }
+      function copyToClipboard() {
+          const text = document.getElementById("copy-target-box").innerHTML.replace(/<br\s*\/?>/gi, '\r\n').replace(/<[^>]+>/g, '');        
+          navigator.clipboard.writeText(text).then(() => {
+              const btn = document.getElementById("copy-btn");
+              btn.textContent = "コピーしました！";
+              setTimeout(() => {
+                  btn.textContent = "クリップボードにコピー";
+              }, 3000);
+          });
+      }
+      function clearSelectedDateTime() {
+          selectedDateTime = [];
+          update();
+          generateCopyText();
+      }
+      function getCookie(name) {
+          const cookies = document.cookie.split(';');
+          for (let i = 0; i < cookies.length; i++) {
+              const cookie = cookies[i].trim();
+              if (cookie.startsWith(name + '=')) {
+                  return cookie.substring(name.length + 1);
+              }
+          }
+          return null;
+      }
+      function setCookie(name, value) {
+          const maxAge = 60 * 60 * 24 * 30 * 3;
+          document.cookie = `${name}=${value}; max-age=${maxAge}; path=/; SameSite=Lax`;
+      }
+      function saveFormState(el) {
+          if (el.type === 'checkbox') {
+              setCookie(el.id, el.checked ? 'true' : 'false');
+          } else if (el.tagName === 'SELECT') {
+              setCookie(el.id, el.value);
+          }
+      }
+      function loadFormState() {
+          cookieIds.forEach(id => {
+              const el = document.getElementById(id);
+              if (!el) return;
+              const savedValue = getCookie(id);
+              if (savedValue !== null) {
+                  if (el.type === 'checkbox') {
+                      el.checked = (savedValue === 'true');
+                  } else if (el.tagName === 'SELECT') {
+                      el.value = savedValue;
+                  }
+              }
+          });
+      }
+      function setCookieEventListeners() {
+          cookieIds.forEach(id => {
+              const el = document.getElementById(id);
+              if (!el) return;
+              el.addEventListener('change', () => {
+                  saveFormState(el);
+                  if (selectedDateTime.length > 0) {
+                      selectedDateTime = [];
+                      alert("情報を変更したため日程選択をクリアしました");
+                  }
+                  update();
+                  generateCopyText();
+              });
+          });
+      }
+      function onlyEventListeners() {
+          onlyEventIds.forEach(id => {
+              const el = document.getElementById(id);
+              if (!el) return;
+              el.addEventListener('change', () => {
+                  if (selectedDateTime.length > 0) {
+                      selectedDateTime = [];
+                      alert("情報を変更したため日程選択をクリアしました");
+                  }
+                  update();
+                  generateCopyText();
+              });
+          });
+      }
+
+      function no_everybody() {
+          document.getElementById("no_child").checked = true;
+          document.getElementById("no_woman").checked = true;
+          document.getElementById("no_man").checked = true;
+          saveFormState(document.getElementById("no_child"));
+          saveFormState(document.getElementById("no_woman"));
+          saveFormState(document.getElementById("no_man"));
+          if (selectedDateTime.length > 0) {
+              selectedDateTime = [];
+              alert("情報を変更したため日程選択をクリアしました");
+          }
+          update();
+          generateCopyText();
+      }
+    </script>
+  </head>
+  <body>
+    <div class="container">
+      <h2>ピウスアトリエ 予約相談用フォーム</h2>
+      
+      <h3>予約できる日</h3>
+      <div class="notice-section">
+        <p>平日と土曜日の10時／13時</p>
+        <p>平日の16時半は子供(小中高校生)のみ</p>
+      </div>
+
+      <h3>予約できない日</h3>
+      <div class="notice-section">
+        <p>土曜日に個別／子供不可をご希望の方</p>
+        <p>日曜日／先生の都合がつかない日</p>
+      </div>
+      
+      <h3>受講者の情報を選択ください</h3>
+      <div class="form-section">
+        <select id="num" style="font-size: 16px;">
+        <option value="1">1名の予約</option>
+        <option value="2">計2名の予約</option>
+        <option value="3">計3名の予約</option>
+        <option value="4">計4名の予約</option>
+        <option value="5">計5名の予約</option>
+        </select>
+        <br>
+        <input type="checkbox" id="child" name="child" /><label for="child"> 子供(小中高校生)</label>
+        <br>
+        <input type="checkbox" id="woman" name="woman" /><label for="woman"> 大人女性</label>
+        <br>
+        <input type="checkbox" id="woman_wc" name="woman_wc" /><label for="woman_wc"> 大人女性(未就学児の子連れ)</label>
+        <br>
+        <input type="checkbox" id="man" name="man" /><label for="man"> 大人男性</label>
+        <br>
+        <input type="checkbox" id="man_wc" name="man_wc" /><label for="man_wc"> 大人男性(未就学児の子連れ)</label>
+        <br>
+        <br>
+        <h4>その他ご希望を選択ください</h4>
+        <input type="checkbox" id="no_child" name="no_child" /><label for="no_child"> 他の子供と受講しない(+2000円)</label>
+        <br>
+        <input type="checkbox" id="no_woman" name="no_woman" /><label for="no_woman"> 他の大人女性と受講しない(+1000円)</label>
+        <br>
+        <input type="checkbox" id="no_man" name="no_man" /><label for="no_man"> 他の大人男性と受講しない(+1000円)</label>
+        <br>
+        <button class="select-btn" onclick="no_everybody()">個別レッスン(全選択)</button>
+        <br>
+        <br>
+        <h4>初回の方のみ選択ください</h4>
+        <input type="checkbox" id="try" name="try" /><label for="try"> 体験レッスン(60分, 1500円)</label>
+        <br>
+        <input type="checkbox" id="talk" name="talk" /><label for="talk"> 教室見学・相談(20分)</label>
+        <br>
+      </div>
+      
+    <h3 id="copy-base">ご予約の際は以下をコピーしてLINEからご相談ください</h3>
+    <div class="form-section">
+      <div id="copy-target-box">処理中...</div>
+      <button class="select-btn" id="copy-btn" onclick="copyToClipboard()">クリップボードにコピー</button>
+      <button class="select-btn" onclick="clearSelectedDateTime()">日程選択をクリア</button>
+    </div>
+
+    <h3>以下の中から日程を選択してください</h3>
+    <div id="month-nav" class="month-nav-container"></div>
+    <table class="schedule-table">
+      <tbody id="schedule-table">
+         <tr><td>読み込み中です…</td></tr>
+      </tbody>
+    </table>
+  </body>
+</html>
