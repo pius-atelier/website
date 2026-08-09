@@ -206,10 +206,6 @@ nav ul li a {
   padding-bottom: 8px;
 }
 
-.card-accent {
-  border-top: 4px solid var(--accent-color);
-}
-
 /* Feature Box */
 .feature-box {
   background-color: #F3FBEB;
