@@ -87,6 +87,10 @@ nav a:hover, nav a.active {
   font-weight: bold;
 }
 
+nav ul li a {
+  white-space: nowrap;
+}
+
 /* Hamburger toggle button (hidden on desktop) */
 .nav-toggle {
   display: none;
@@ -315,7 +319,7 @@ footer {
   padding-top: 20px;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 780px) {
   .header-container {
     flex-wrap: wrap;
     justify-content: space-between;
@@ -336,8 +340,8 @@ footer {
     width: 100%;
     padding-top: 15px;
   }
-  nav ul.nav-open {
-    display: flex;
+  nav.nav-open ul {
+    display: block;
   }
   nav li {
     border-top: 1px solid var(--border-color);
