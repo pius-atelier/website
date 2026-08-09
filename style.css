@@ -1,4 +1,3 @@
-/* ピウスアトリエ 共通CSS (可読性を高めた濃いめパステル黄緑調) */
 :root {
   --main-color: #5B9E14;        /* 高コントラストな爽やかグリーン */
   --accent-color: #FF9B85;      /* コーラルパステル */
@@ -340,9 +339,9 @@ footer {
     width: 100%;
     padding-top: 15px;
   }
-  nav.nav-open ul {
+  #site-nav.nav-open ul {
     display: block !important;
-    z-index: 9999;
+    z-index: 9999; 
   }
   nav li {
     border-top: 1px solid var(--border-color);
