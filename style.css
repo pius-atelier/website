@@ -190,6 +190,10 @@ nav ul li a {
   border-radius: 2px;
 }
 
+.section-message {
+  text-align: center;
+}
+
 /* Cards & Grid */
 .grid-2 {
   display: grid;
@@ -368,6 +372,7 @@ footer {
   }
   .hero {
     padding: 36px 16px;
+    text-align: left;
   }
   .hero h1 {
     font-size: 1.6rem;
@@ -378,6 +383,10 @@ footer {
   .section-title {
     font-size: 1.4rem;
     margin-bottom: 20px;
+  }
+  .section-message {
+    padding: 0px 20px;
+    text-align: left;
   }
   .grid-2, .grid-3 {
     gap: 16px;
