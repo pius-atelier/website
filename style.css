@@ -168,6 +168,7 @@ nav ul li a {
 .container {
   max-width: 1100px;
   margin: 0 auto;
+  padding: 0px 15px;
 }
 
 .section-title {
@@ -367,7 +368,7 @@ footer {
   }
 }
 
-@media (max-width: 600px) {
+@media (max-width: 640px) {
   header {
     min-height: 60px;
   }
@@ -386,7 +387,7 @@ footer {
     margin-bottom: 20px;
   }
   .section-message {
-    padding: 0px 20px;
+    padding: 0px 10px;
     text-align: left;
   }
   .grid-2, .grid-3 {
