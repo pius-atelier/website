@@ -261,19 +261,6 @@ footer {
   margin-bottom: 30px;
 }
 
-.footer-col h4 {
-  color: #C1E887;
-  margin-bottom: 15px;
-}
-
-.footer-col ul {
-  list-style: none;
-}
-
-.footer-col li {
-  margin-bottom: 8px;
-}
-
 .footer-col a {
   color: #F4F8F0;
 }
@@ -281,6 +268,22 @@ footer {
 .footer-col address {
   font-style: normal;
 }
+
+.footer-menu {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.footer-menu h4 {
+  color: #C1E887;
+  margin-bottom: 15px;
+}
+
+.footer-menu a {
+  color: #F4F8F0;
+  font-size: 1.6rem;
+}
+
 
 .footer-logo-img {
   height: 80px;
@@ -294,15 +297,6 @@ footer {
   gap: 12px;
 }
 
-.footer-sns img {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: #fff;
-  padding: 4px;
-}
-
-/* Photo content */
 .photo-card img,
 .photo-frame img {
   width: 100%;
