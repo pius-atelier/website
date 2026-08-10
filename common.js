@@ -43,6 +43,11 @@ document.addEventListener("DOMContentLoaded", function() {
       })
       .then(html => {
         footerElem.innerHTML = html.replace(/href="\.\//g, 'href="./');
+        const pageId = document.body.getAttribute("data-page");
+        if (pageId) {
+          const activeFooterNav = document.getElementById("footer-menu-" + pageId);
+          if (activeFooterNav) activeFooterNav.classList.add("active");
+        }
       })
       .catch(err => console.error(err));
   }
