@@ -151,31 +151,57 @@
 </script>
     <script>
       const API_KEY = 'AIzaSyCIIjhZmt3PCXe5ILuRFPrN6_iJbMxXWpg'; 
-      const CALENDAR_ID = 'c666aaabda48f04b4ff767e6af9be1da56a31f715931aa39973632bba5b6a408@group.calendar.google.com'; 
+      const CALENDAR_ID = 'c666aaabda48f04b4ff767e6af9be1da56a31f715931aa39973632bba5b6a408@group.calendar.google.com';
+      const HOLIDAY_CALENDAR_ID = 'japanese__ja@holiday.calendar.google.com';
       const cookieIds = ['num', 'child', 'woman', 'man', 'woman_wc', 'man_wc', 'no_child', 'no_woman', 'no_man'];
-      const onlyEventIds = ['try', 'talk'];
+      const onlyEventIds = ['lesson', 'coaching', 'try', 'talk'];
       let selectedDateTime = [];
       let fetchedEvents;
+      let holidayDates = new Set();
       window.addEventListener('DOMContentLoaded', () => {
+        const isViewMode = new URLSearchParams(window.location.search).has('view');
+        const otherSection = document.getElementById('only-view');
+        if (otherSection) {
+          otherSection.style.display = isViewMode ? 'block' : 'none';
+        }
+
         loadFormState();
         setCookieEventListeners();
         onlyEventListeners();
         generateCopyText();
         const now = new Date().toISOString();
-        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=2500`;
-        fetch(url)
-            .then(response => {
-                if (!response.ok) throw new Error('カレンダーデータの取得に失敗しました。設定を確認してください。');
-                return response.json();
-            })
-            .then(data => {
-                fetchedEvents = data.items || [];
-                update();
-            })
-            .catch(err => {
-                document.getElementById('schedule-table').innerText = err.message;
-            });
+        const mainCalUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=2500`;
+        const holidayCalUrl = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(HOLIDAY_CALENDAR_ID)}/events?key=${API_KEY}&timeMin=${now}&orderBy=startTime&singleEvents=true&maxResults=2500`;
+
+        Promise.all([
+          fetch(mainCalUrl).then(res => {
+            if (!res.ok) throw new Error('カレンダーデータの取得に失敗しました。設定を確認してください。');
+            return res.json();
+          }),
+          fetch(holidayCalUrl).then(res => res.ok ? res.json() : { items: [] }).catch(() => ({ items: [] }))
+        ])
+        .then(([mainData, holidayData]) => {
+          fetchedEvents = mainData.items || [];
+          holidayDates.clear();
+          (holidayData.items || []).forEach(item => {
+            if (item.start) {
+              const dateStr = item.start.date || (item.start.dateTime ? item.start.dateTime.substring(0, 10) : null);
+              if (dateStr) holidayDates.add(dateStr);
+            }
+          });
+          update();
+        })
+        .catch(err => {
+          document.getElementById('schedule-table').innerText = err.message;
+        });
       });
+
+      function formatDateKey(dateObj) {
+        const y = dateObj.getFullYear();
+        const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
 
       function update() {
         const tableBody = document.getElementById("schedule-table");
@@ -210,6 +236,10 @@
             const dayName = dayLabels[dayOfWeek];
             if (dayOfWeek === 0) continue;
 
+            const dateKey = formatDateKey(currentDate);
+            const isHoliday = holidayDates.has(dateKey);
+            if (isHoliday) continue;
+
             if (month !== lastMonth) {
               const monthRow = document.createElement("tr");
               monthRow.className = "month-header";
@@ -234,7 +264,7 @@
               }
               lastMonth = month;
             }
-          
+
             let timeSlots = [];
             const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
             if (isWeekday) {
@@ -384,7 +414,7 @@
           if (calendarProfiles.length > 0) {
               calendarText += calendarProfiles.join("");
           }
-        
+          
           const profiles = [];
           if (document.getElementById("child")?.checked) profiles.push("子供");
           if (document.getElementById("woman")?.checked) profiles.push("大人女性");
@@ -401,15 +431,17 @@
               if (nw) options.push("他の大人女性不可");
               if (nm) options.push("他の大人男性不可");
           }
-        
-          const firsts = [];
-          if (document.getElementById("try")?.checked) firsts.push("体験レッスン");
-          if (document.getElementById("talk")?.checked) firsts.push("教室見学や相談");
-        
+          
+          const selects = [];
+          if (document.getElementById("lesson")?.checked) selects.push("通常レッスン");
+          if (document.getElementById("coaching")?.checked) selects.push("コーチング");
+          if (document.getElementById("try")?.checked) selects.push("体験レッスン");
+          if (document.getElementById("talk")?.checked) selects.push("教室見学や相談");
+          
           const optionText = options.length > 0 ? `、${options.join("・")}で` : "";
-          const firstText = firsts.length > 0 ? `、${firsts.join("・")}の` : "";
+          const selectText = selects.length > 0 ? `、${selects.join("・")}の` : "";
           const dateTimeHTML = selectedDateTime.length > 0 ? selectedDateTime.join("<br>") : "★★日程が未選択です★★";
-          const resultHTML = `${dateTimeHTML}<br>${profileText}が${numText}で${optionText}${firstText}予約希望です。<br>[${calendarText}]`;
+          const resultHTML = `${dateTimeHTML}<br>${profileText}が${numText}で${optionText}${selectText}予約希望です。<br>[${calendarText}]`;
           document.getElementById("copy-target-box").innerHTML = resultHTML;
       }
       function copyToClipboard() {
@@ -511,6 +543,8 @@
   <body>
     <div class="container">
       <h2>ピウスアトリエ<br>予約相談用フォーム</h2>
+      <p style="text-align:center">料金やその他費用の詳細は<a href="contact.html">＜ご予約やご相談＞</a>のページをご確認ください<br>
+
       
       <h3>予約できる日</h3>
       <div class="notice-section">
@@ -543,7 +577,8 @@
         <input type="checkbox" id="man" name="man" /><label for="man"> 大人男性</label>
         <br>
         <input type="checkbox" id="man_wc" name="man_wc" /><label for="man_wc"> 大人男性(未就学児の子連れ)</label>
-        <br>
+
+        <div id="only-view">
         <br>
         <h4>その他ご希望を選択ください</h4>
         <input type="checkbox" id="no_child" name="no_child" /><label for="no_child"> 他の子供と受講しない(+2000円)</label>
@@ -553,12 +588,18 @@
         <input type="checkbox" id="no_man" name="no_man" /><label for="no_man"> 他の大人男性と受講しない(+1000円)</label>
         <br>
         <button class="select-btn" onclick="no_everybody()">個別レッスン(全選択)</button>
+        </div>
+      </div>
+
+      <h3>受講内容を選択ください</h3>
+      <div class="form-section">
+        <input type="radio" id="lesson" name="sel" /><label for="lesson"> 通常レッスン</label>
         <br>
+        <input type="radio" id="coaching" name="sel" /><label for="coaching"> コーチング</label>
         <br>
-        <h4>初回の方のみ選択ください</h4>
-        <input type="checkbox" id="try" name="try" /><label for="try"> 体験レッスン(60分, 1500円)</label>
+        <input type="radio" id="try" name="sel" /><label for="try"> 体験レッスン</label>
         <br>
-        <input type="checkbox" id="talk" name="talk" /><label for="talk"> 教室見学・相談(20分)</label>
+        <input type="radio" id="talk" name="sel" /><label for="talk"> 教室見学・相談</label>
         <br>
       </div>
       
